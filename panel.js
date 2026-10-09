@@ -2,8 +2,8 @@
 /* Panel: costos, fertilización, personal y cuentas. Muestra lo último guardado si no hay señal. */
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const SECCIONES = [['costos', 'Costos'], ['fert', 'Fertilización'], ['rodados', 'Rodados'], ['personal', 'Personal'], ['cuentas', 'Cuentas']];
-const P = { seccion: S.seccionPanel || 'costos', periodo: '12m', finca: '', categoria: '', moneda: 'ars', fincaFert: 'Angaco' };
+const SECCIONES = [['agenda', 'Agenda'], ['costos', 'Costos'], ['fert', 'Fertilización'], ['rodados', 'Rodados'], ['personal', 'Personal'], ['cuentas', 'Cuentas']];
+const P = { seccion: S.seccionPanel || 'agenda', periodo: '12m', finca: '', categoria: '', moneda: 'ars', fincaFert: 'Angaco' };
 let cargandoPanel = false;
 
 async function abrirPanel() {
@@ -33,11 +33,27 @@ function pintarPanel() {
   let cuerpo = '';
   if (d) {
     const errores = (d.errores || []).map(e => `<div class="aviso">No se pudo leer: ${esc(e)}</div>`).join('');
-    cuerpo = errores + ({ costos: htmlCostos, fert: htmlFert, rodados: htmlRodados, personal: htmlPersonal, cuentas: htmlCuentas }[P.seccion] || htmlCostos)(d);
+    cuerpo = errores + ({ agenda: htmlAgenda, costos: htmlCostos, fert: htmlFert, rodados: htmlRodados, personal: htmlPersonal, cuentas: htmlCuentas }[P.seccion] || htmlCostos)(d);
   }
   el.innerHTML = seg + estado + cuerpo;
   el.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { P.seccion = S.seccionPanel = b.dataset.sec; persistir(); pintarPanel(); });
   el.querySelectorAll('[data-filtro]').forEach(s => s.onchange = () => { P[s.dataset.filtro] = s.value; pintarPanel(); });
+  el.querySelectorAll('[data-hecho]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Marcar como hecho? Se marca para los dos.')) return;
+    b.disabled = true;
+    try {
+      const r = await api('marcarHecho', { origen: b.dataset.origen, id: b.dataset.hecho });
+      S.panel.agenda = S.panel.agenda.filter(x => !(x.id === b.dataset.hecho && x.origen === b.dataset.origen));
+      persistir(); pintarPanel(); abrirPanel();
+      if (r.mensaje && r.mensaje !== 'Hecho.') alert(r.mensaje);
+    } catch (e) { alert(e instanceof ErrorRed ? 'Sin señal: probá de nuevo cuando haya.' : e.message); b.disabled = false; }
+  });
+  el.querySelectorAll('[data-desmarcar]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Volver a dejarlo pendiente?')) return;
+    b.disabled = true;
+    try { await api('desmarcar', { origen: b.dataset.origen, id: b.dataset.desmarcar }); abrirPanel(); }
+    catch (e) { alert(e instanceof ErrorRed ? 'Sin señal: probá de nuevo cuando haya.' : e.message); b.disabled = false; }
+  });
 }
 
 // ───────────────────────── Costos ─────────────────────────
@@ -178,6 +194,39 @@ function htmlFert(d) {
       </div>${cuadros}${proveedores}${prestamos}</div>`;
   }).join('');
   return selector + `<p class="vacio" style="margin:0">Campaña ${esc(f.campania)}</p>` + alertas + tarjetas;
+}
+
+// ───────────────────────── Agenda ─────────────────────────
+
+function htmlAgenda(d) {
+  const items = d.agenda || [];
+  const hechos = d.agendaHechos || [];
+  const htmlHechos = hechos.length ? `<div class="card"><h2>✅ Hechos (últimos 7 días)</h2><div class="tabla-scroll"><table><tbody>${hechos.map(x => `<tr>
+      <td><b>${esc(x.tipo)}</b><br><small>${esc(x.detalle)}</small></td><td class="num">${x.monto ? peso(x.monto) : ''}</td>
+      <td><small>${esc(x.por)}<br>${esc(x.cuando)}</small></td>
+      <td><button class="secundario chico" data-desmarcar="${esc(x.id)}" data-origen="${esc(x.origen)}">↩︎</button></td></tr>`).join('')}</tbody></table></div></div>` : '';
+  if (!items.length) return '<div class="card"><p class="vacio">No hay nada pendiente. Ejemplo: "Recordame pagar los intereses del préstamo, 350 mil, el 10 de cada mes".</p></div>' + htmlHechos;
+  const hoy = hoyIso();
+  const en = n => { const x = new Date(); x.setDate(x.getDate() + n); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+  const grupos = [
+    ['⚠️ Vencidos', items.filter(x => x.fecha < hoy)],
+    ['📌 Hoy', items.filter(x => x.fecha === hoy)],
+    ['Próximos 7 días', items.filter(x => x.fecha > hoy && x.fecha <= en(7))],
+    ['Próximos 30 días', items.filter(x => x.fecha > en(7) && x.fecha <= en(30))],
+    ['Más adelante', items.filter(x => x.fecha > en(30))]
+  ].filter(([, l]) => l.length);
+  const total = (l, origen) => l.filter(x => x.origen === origen).reduce((a, x) => a + x.monto, 0);
+  return grupos.map(([titulo, l]) => {
+    const cubrir = total(l, 'cheque_cubrir'), cobrar = total(l, 'cheque_cobrar');
+    return `<div class="card"><h2>${titulo}</h2>
+      ${cubrir || cobrar ? `<p class="vacio" style="margin-top:0">${cubrir ? 'A cubrir: <b>' + peso(cubrir) + '</b>' : ''}${cubrir && cobrar ? ' · ' : ''}${cobrar ? 'A cobrar: <b>' + peso(cobrar) + '</b>' : ''}</p>` : ''}
+      <div class="tabla-scroll"><table><tbody>${l.map(x => `<tr>
+        <td>${fechaCorta(x.fecha)}</td>
+        <td><b>${esc(x.tipo)}</b><br><small>${esc(x.detalle)}${x.recurrencia && x.recurrencia !== 'Única' ? ' · ' + esc(x.recurrencia.toLowerCase()) : ''}</small></td>
+        <td class="num">${x.monto ? peso(x.monto) : ''}</td>
+        <td><button class="secundario chico" data-hecho="${esc(x.id)}" data-origen="${esc(x.origen)}" aria-label="Marcar como hecho">✓</button></td>
+      </tr>`).join('')}</tbody></table></div></div>`;
+  }).join('') + htmlHechos;
 }
 
 // ───────────────────────── Rodados ─────────────────────────

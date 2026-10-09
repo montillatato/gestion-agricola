@@ -216,7 +216,11 @@ function abrirAyuda() {
     ${ej('Sergio mandó 1.200.000')}
     ${ej('Al 130 le cambiamos el aceite y el filtro, tiene 4.520 horas. El aceite salió 85 mil')}
     ${ej('¿Cuándo le hicimos el último cambio de aceite al 130?')}
+    ${ej('Recordame pagar los intereses del préstamo, 350 mil, el 10 de cada mes')}
     ${ej('Recibí cheque de Bodega X, Banco Nación nº 5678, 1.200.000, se cobra el 20/11')}
+
+    <h3>Agenda: cheques, impuestos, transferencias</h3>
+    <p>En <b>Panel → Agenda</b> está todo lo que hay que hacer, ordenado por fecha. Cuando cobres o cubras un cheque, pagues un impuesto o hagas una transferencia, tocá <b>✓</b>. Se marca para Tato también. Si lo marcaste por error, en "Hechos" tocá <b>↩︎</b>.</p>
 
     <h3>Si me equivoqué</h3>
     <p>Después de guardar tenés <b>1 hora</b> para tocar <b>Deshacer</b>. Después de eso, avisale a Tato.</p>

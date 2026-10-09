@@ -89,6 +89,20 @@ function pintar(item) {
   if (item.estado === 'descartado') { if (el) el.remove(); return; }
   const nuevo = document.createElement('div');
   nuevo.dataset.item = item.id;
+  if (item.tipo === 'lote') {
+    const pendientes = S.chat.filter(i => i.grupoId === item.grupoId && i.tipo === 'tarjeta' && i.estado === 'editando');
+    if (!pendientes.length) { if (el) el.remove(); return; }
+    nuevo.className = 'msg bot';
+    nuevo.innerHTML = `Revisá las tarjetas de arriba. Si están todas bien:<br><button class="primario" style="margin-top:8px;width:100%">Guardar las ${pendientes.length} tarjetas</button>`;
+    nuevo.querySelector('button').onclick = () => {
+      const ahora = S.chat.filter(i => i.grupoId === item.grupoId && i.tipo === 'tarjeta' && i.estado === 'editando');
+      if (!ahora.length || !confirm(`¿Guardar las ${ahora.length} tarjetas?`)) return;
+      ahora.forEach(guardarTarjeta);
+      pintar(item);
+    };
+    if (el) el.replaceWith(nuevo); else chat.appendChild(nuevo);
+    return;
+  }
   if (item.tipo === 'tarjeta') {
     nuevo.className = 'tarjeta';
     nuevo.innerHTML = htmlTarjeta(item);
@@ -134,7 +148,7 @@ function enviar() {
 
 // ───────────────────────── Tarjetas ─────────────────────────
 
-const TITULO_TIPO = { gasto: 'Gasto', insumo: 'Insumo', deuda: 'Compra a cuenta (deuda)', jorge: 'Días de Jorge', aporte_sergio: 'Aporte de Sergio', cheque_recibido: 'Cheque a cobrar', mantenimiento: 'Mantenimiento' };
+const TITULO_TIPO = { gasto: 'Gasto', insumo: 'Insumo', deuda: 'Compra a cuenta (deuda)', jorge: 'Días de Jorge', aporte_sergio: 'Aporte de Sergio', cheque_recibido: 'Cheque a cobrar', mantenimiento: 'Mantenimiento', recordatorio: 'Recordatorio', cheque_emitido: 'Cheque a cubrir (ya en costos)' };
 const ini = () => S.ini || { fincas: ['Angaco'], categorias: [], medios: [], movimientos: [], unidades: [], cuadros: [], productos: [], personas: [], proveedores: [] };
 const cuadrosDe = finca => ['', ...ini().cuadros.filter(c => c.finca === finca).map(c => c.cuadro)];
 
@@ -190,6 +204,22 @@ const CAMPOS = {
     { k: 'fecha', et: 'Fecha', t: 'date' },
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }
   ],
+  recordatorio: [
+    { k: 'detalle', et: 'Qué hay que hacer', t: 'text', ancho: true },
+    { k: 'fecha', et: 'Fecha', t: 'date' },
+    { k: 'monto', et: 'Monto ($, opcional)', t: 'number' },
+    { k: 'tipo_recordatorio', et: 'Tipo', t: 'select', op: () => ini().tiposRecordatorio || [] },
+    { k: 'recurrencia', et: 'Se repite', t: 'select', op: () => ini().recurrencias || [] },
+    { k: 'notas', et: 'Notas', t: 'text', ancho: true }
+  ],
+  cheque_emitido: [
+    { k: 'proveedor', et: 'A quién', t: 'text', lista: () => ini().proveedores, ancho: true },
+    { k: 'monto', et: 'Monto ($)', t: 'number' },
+    { k: 'fecha', et: 'Fecha de cobro', t: 'date' },
+    { k: 'cheque_numero', et: 'Nº de cheque', t: 'text' },
+    { k: 'finca', et: 'Finca', t: 'select', op: () => ini().fincas },
+    { k: 'notas', et: 'Notas', t: 'text', ancho: true }
+  ],
   mantenimiento: [
     { k: 'rodado', et: 'Rodado', t: 'select', op: () => ['', ...(ini().rodados || [])] },
     { k: 'trabajo', et: 'Trabajo', t: 'select', op: () => ini().trabajos || [] },
@@ -214,6 +244,8 @@ function resumenRegistro(r) {
   if (r.tipo === 'insumo') return `${r.movimiento}: ${r.producto} ${num(r.cantidad, 2)} ${r.unidad}${r.cuadro ? ' · cuadro ' + r.cuadro : ''} · ${r.finca}`;
   if (r.tipo === 'deuda') return `Deuda ${r.proveedor} · ${peso(r.monto)}`;
   if (r.tipo === 'jorge') return `Jorge: ${r.dias_angaco} días Angaco, ${r.dias_albardon} Albardón (semana ${fechaCorta(r.fecha)})`;
+  if (r.tipo === 'recordatorio') return `${r.tipo_recordatorio}: ${r.detalle}${r.monto ? ' · ' + peso(r.monto) : ''} · ${fechaCorta(r.fecha)}${r.recurrencia && r.recurrencia !== 'Única' ? ' (' + r.recurrencia.toLowerCase() + ')' : ''}`;
+  if (r.tipo === 'cheque_emitido') return `Cheque a ${r.proveedor} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
   if (r.tipo === 'mantenimiento') return `${r.rodado}: ${r.trabajo} · ${r.detalle}${r.horas_km ? ' · ' + num(r.horas_km, 0) + ' h/km' : ''}`;
   if (r.tipo === 'cheque_recibido') return `Cheque de ${r.librador} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
   return `Aporte de Sergio · ${peso(r.monto)}`;
@@ -343,6 +375,7 @@ async function ejecutar(tarea) {
       const grupoId = uid();
       S.grupos[grupoId] = grupo;
       r.registros.forEach(reg => agregarItem({ tipo: 'tarjeta', grupoId, registro: reg, original: Object.assign({}, reg), estado: 'editando' }));
+      if (r.registros.length > 2) agregarItem({ tipo: 'lote', grupoId, cantidad: r.registros.length });
       S.hilo = [];
     } else if (r.pregunta) {
       agregarItem({ tipo: 'bot', texto: r.pregunta });
