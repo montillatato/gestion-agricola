@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e7d32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finca">
+<title>Gestión agrícola</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" href="icono-192.png">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header><h1 id="titulo">Cargar</h1><small id="usuario"></small></header>
+  <div id="aviso-cola"><span id="aviso-cola-texto"></span><button class="secundario chico" id="reintentar">Reintentar</button></div>
+
+  <main id="vista-cargar" class="vista activa">
+    <div id="chat" aria-live="polite"></div>
+    <div id="adjunto"><img id="miniatura" alt="Foto adjunta"><button class="secundario chico" id="quitar">Quitar foto</button></div>
+    <div id="barra-chat">
+      <label class="icono secundario boton" aria-label="Adjuntar foto">📷<input type="file" id="foto" accept="image/*" hidden></label>
+      <textarea id="texto" rows="1" placeholder="Escribí o dictá…"></textarea>
+      <button class="icono primario" id="enviar" aria-label="Enviar">➤</button>
+    </div>
+  </main>
+  <main id="vista-panel" class="vista"><div class="pagina" id="panel"></div></main>
+  <main id="vista-liquidacion" class="vista"><div class="pagina" id="liquidacion"></div></main>
+  <main id="vista-validar" class="vista"><div class="pagina" id="validar"></div></main>
+  <main id="vista-ayuda" class="vista"><div class="pagina ayuda" id="ayuda"></div></main>
+
+  <nav id="nav">
+    <button data-vista="cargar" aria-current="page"><span>💬</span>Cargar</button>
+    <button data-vista="panel"><span>📊</span>Panel</button>
+    <button data-vista="liquidacion" data-admin hidden><span>🧾</span>Liquidación</button>
+    <button data-vista="validar" data-admin hidden><span>✅</span>Validar</button>
+    <button data-vista="ayuda"><span>❔</span>Ayuda</button>
+  </nav>
+  <div id="tip"></div>
+  <div id="bloqueo"><div><h2>Falta tu acceso</h2><p>Abrí esta app desde el link que te pasó Tato.</p></div></div>
+
+  <script src="app.js"></script>
+  <script src="panel.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
