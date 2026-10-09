@@ -143,7 +143,7 @@ const CAMPOS = {
     { k: 'finca', et: 'Finca', t: 'select', op: () => ini().fincas },
     { k: 'fecha', et: r => r.medio_pago === 'Cheque' ? 'Fecha de cobro' : 'Fecha de pago', t: 'date', si: r => r.medio_pago !== 'Cheque de terceros' },
     { k: 'detalle', et: 'Detalle', t: 'text', ancho: true },
-    { k: 'categoria', et: 'Categoría', t: 'select', op: r => (ini().categoriasPorFinca || {})[r.finca] || ini().categorias, ancho: true },
+    { k: 'categoria', et: 'Categoría', t: 'select', op: () => ini().categorias, ancho: true, si: () => !!ini().admin },
     { k: 'monto', et: 'Monto ($)', t: 'number' },
     { k: 'medio_pago', et: 'Medio de pago', t: 'select', op: () => ini().medios },
     { k: 'cheque_numero', et: r => r.medio_pago === 'Cheque' ? 'Nº de cheque' : 'Nº del cheque endosado', t: 'text', si: r => /^Cheque/.test(r.medio_pago) },
@@ -154,7 +154,7 @@ const CAMPOS = {
     { k: 'proveedor', et: 'Proveedor', t: 'text', lista: () => ini().proveedores, ancho: true },
     { k: 'cuenta_corriente', et: 'Cancela deuda en cuenta corriente', t: 'check', ancho: true, si: r => !!r.proveedor },
     { k: 'factura', et: 'Factura', t: 'select', op: () => ['No', 'Si'] },
-    { k: 'inversion', et: 'Inversión (costo de una vez, no se repite)', t: 'check', ancho: true },
+    { k: 'inversion', et: 'Inversión (costo de una vez, no se repite)', t: 'check', ancho: true, si: () => !!ini().admin },
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }
   ],
   insumo: [
@@ -247,7 +247,8 @@ function htmlTarjeta(item) {
     const extra = c.t === 'number' ? 'inputmode="decimal" step="any"' : '';
     return `<label class="${clase}">${esc(et)}<input type="${c.t}" data-k="${c.k}" value="${esc(v)}" ${extra} ${lista}>${dl}</label>`;
   }).join('');
-  const dudas = r.confianza < 0.75 ? `<div class="aviso">Revisalo bien: no estoy seguro (${Math.round(r.confianza * 100)}%).</div>` : '';
+  const dudas = (r.confianza < 0.75 ? `<div class="aviso">Revisalo bien: no estoy seguro (${Math.round(r.confianza * 100)}%).</div>` : '') +
+    (ini().admin && r.duda_clasificacion ? `<div class="aviso">🏷️ Duda de clasificación: ${esc(r.duda_clasificacion)}${r.alternativas ? ' · Alternativas: ' + esc(r.alternativas) : ''}</div>` : '');
   const error = item.error ? `<div class="aviso">⚠️ ${esc(item.error)}</div>` : '';
   return `<h3>${esc(titulo)}</h3>${campos}${dudas}${error}
     <div class="botones"><button class="secundario" data-accion="descartar">Descartar</button><button class="primario" data-accion="guardar">Guardar</button></div>`;

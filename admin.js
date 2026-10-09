@@ -109,22 +109,38 @@ function pintarLiquidacion() {
 // ───────────────────────── Validar ─────────────────────────
 
 let pendientes = null;
+let dudas = [];
 
 async function abrirValidar() {
   const el = $('validar');
   if (!pendientes) el.innerHTML = '<p class="vacio">Cargando…</p>';
   try {
-    pendientes = await api('pendientes');
+    [pendientes, dudas] = await Promise.all([api('pendientes'), api('dudas')]);
     pintarValidar();
   } catch (e) {
     el.innerHTML = `<div class="aviso">${esc(e instanceof ErrorRed ? 'Sin señal. Validar necesita conexión.' : e.message)}</div>`;
   }
 }
 
+function htmlDudas() {
+  if (!dudas.length) return '';
+  const cats = ini().categorias || [];
+  return `<div class="card"><h2>🏷️ ${dudas.length} ${dudas.length === 1 ? 'gasto' : 'gastos'} con duda de clasificación</h2>
+    <p class="vacio" style="margin-top:0">Confirmá o cambiá la categoría y si es inversión. Se corrige también en la planilla de la finca.</p>
+    ${dudas.map(x => `<div class="pend" data-duda="${esc(x.id)}">
+      <div class="meta">${esc(x.finca)} · ${fechaCorta(x.fecha)} · ${peso(x.monto)}</div>
+      <div><b>${esc(x.detalle)}</b></div>
+      <div class="entrada">Duda: ${esc(x.duda)}${x.alternativas ? ' · Alternativas: ' + esc(x.alternativas) : ''}</div>
+      <select class="campo" data-cat>${cats.map(k => `<option${k === x.categoria ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select>
+      <label class="check" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-inv ${x.inversion ? 'checked' : ''}> Inversión (costo de una vez)</label>
+      <div class="acciones"><button class="primario chico" data-confirmar>Confirmar clasificación</button></div>
+    </div>`).join('')}</div>`;
+}
+
 function pintarValidar() {
   const el = $('validar');
-  if (!pendientes.length) { el.innerHTML = '<div class="card"><p>✅ No hay nada pendiente de validar.</p></div>'; return; }
-  el.innerHTML = `<div class="card"><h2>${pendientes.length} pendientes de validar</h2>
+  if (!pendientes.length && !dudas.length) { el.innerHTML = '<div class="card"><p>✅ No hay nada pendiente de validar ni de clasificar.</p></div>'; return; }
+  el.innerHTML = htmlDudas() + (!pendientes.length ? '' : `<div class="card"><h2>${pendientes.length} pendientes de validar</h2>
     <p class="vacio" style="margin-top:0">Rechazar un gasto lo saca de la planilla de la finca. Si te equivocás, lo cambiás en la hoja LOG de la base.</p>
     ${pendientes.map(p => `<div class="pend" data-id="${esc(p.id)}">
       <div class="meta">${esc(p.tipo)} · ${esc(p.registrado)} · ${esc(p.usuario)}${p.confianza !== '' && Number(p.confianza) < 0.75 ? ' · <b style="color:var(--alerta)">confianza ' + Math.round(p.confianza * 100) + '%</b>' : ''}</div>
@@ -134,7 +150,20 @@ function pintarValidar() {
       ${p.comprobante ? `<a class="meta" href="${esc(p.comprobante)}" target="_blank" rel="noopener">Ver comprobante ↗</a>` : ''}
       <div class="acciones"><button class="primario chico" data-estado="✅ Validado">✅ Validar</button><button class="secundario chico" data-estado="❌ Rechazado">❌ Rechazar</button></div>
     </div>`).join('')}
-    <button class="secundario" id="validar-todos" style="width:100%;margin-top:12px">✅ Validar todos (${pendientes.length})</button></div>`;
+    <button class="secundario" id="validar-todos" style="width:100%;margin-top:12px">✅ Validar todos (${pendientes.length})</button></div>`);
+
+  el.querySelectorAll('[data-duda]').forEach(div => div.querySelector('[data-confirmar]').onclick = async () => {
+    const b = div.querySelector('[data-confirmar]');
+    b.disabled = true;
+    try {
+      await api('reclasificar', { id: div.dataset.duda, categoria: div.querySelector('[data-cat]').value, inversion: div.querySelector('[data-inv]').checked });
+      dudas = dudas.filter(x => x.id !== div.dataset.duda);
+      pintarValidar();
+    } catch (e) {
+      alert(e.message);
+      b.disabled = false;
+    }
+  });
 
   el.querySelectorAll('.pend').forEach(div => div.querySelectorAll('[data-estado]').forEach(b => b.onclick = async () => {
     const id = div.dataset.id, estado = b.dataset.estado;
@@ -149,7 +178,7 @@ function pintarValidar() {
       div.querySelectorAll('button').forEach(x => { x.disabled = false; });
     }
   }));
-  $('validar-todos').onclick = async () => {
+  if ($('validar-todos')) $('validar-todos').onclick = async () => {
     if (!confirm(`¿Validar los ${pendientes.length} registros?`)) return;
     $('validar-todos').disabled = true;
     for (const p of [...pendientes]) {
