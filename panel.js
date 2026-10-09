@@ -7,9 +7,9 @@ const P = { seccion: S.seccionPanel || 'agenda', periodo: '12m', finca: '', cate
 let cargandoPanel = false;
 
 async function abrirPanel() {
-  pintarPanel();
-  if (cargandoPanel) return;
+  if (cargandoPanel) { pintarPanel(); return; }
   cargandoPanel = true;
+  pintarPanel();
   try {
     S.panel = await api('panel');
     S.panelHora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -29,7 +29,7 @@ function pintarPanel() {
   const seg = `<div class="seg" role="group">${SECCIONES.map(([k, et]) =>
     `<button data-sec="${k}" aria-pressed="${P.seccion === k}">${et}</button>`).join('')}</div>`;
   const estado = S.panelError ? `<div class="aviso">${esc(S.panelError)}</div>` :
-    cargandoPanel ? '<p class="vacio">Actualizando…</p>' : (S.panelHora ? `<p class="vacio" style="margin:0">Actualizado ${S.panelHora}</p>` : '');
+    cargandoPanel ? `<p class="vacio">${d ? 'Actualizando…' : 'Cargando datos… (puede tardar unos segundos)'}</p>` : (S.panelHora ? `<p class="vacio" style="margin:0">Actualizado ${S.panelHora}</p>` : '');
   let cuerpo = '';
   if (d) {
     const errores = (d.errores || []).map(e => `<div class="aviso">No se pudo leer: ${esc(e)}</div>`).join('');
