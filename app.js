@@ -5,6 +5,17 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const peso = n => '$ ' + Math.round(Number(n) || 0).toLocaleString('es-AR');
 const num = (n, d = 1) => (Number(n) || 0).toLocaleString('es-AR', { maximumFractionDigits: d });
+/** Interpreta números escritos a la argentina: "5,5" · "1.500.000" · "1.500,50" · "$ 85.000". */
+const aNumero = t => {
+  let s = String(t == null ? '' : t).replace(/[$\s]/g, '');
+  if (s === '') return '';
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = Number(s);
+  return isNaN(n) ? '' : n;
+};
+/** Número para mostrar dentro de un campo editable: coma decimal, sin separador de miles. */
+const enCampo = n => n === '' || n == null ? '' : String(n).replace('.', ',');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const fechaCorta = iso => iso ? String(iso).split('-').reverse().join('/') : '';
 const hoyIso = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -210,6 +221,7 @@ const CAMPOS = {
     { k: 'monto', et: 'Monto ($, opcional)', t: 'number' },
     { k: 'tipo_recordatorio', et: 'Tipo', t: 'select', op: () => ini().tiposRecordatorio || [] },
     { k: 'recurrencia', et: 'Se repite', t: 'select', op: () => ini().recurrencias || [] },
+    { k: 'hasta', et: 'Hasta (última vez, opcional)', t: 'date', si: r => r.recurrencia && r.recurrencia !== 'Única' },
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }
   ],
   cheque_emitido: [
@@ -244,7 +256,7 @@ function resumenRegistro(r) {
   if (r.tipo === 'insumo') return `${r.movimiento}: ${r.producto} ${num(r.cantidad, 2)} ${r.unidad}${r.cuadro ? ' · cuadro ' + r.cuadro : ''} · ${r.finca}`;
   if (r.tipo === 'deuda') return `Deuda ${r.proveedor} · ${peso(r.monto)}`;
   if (r.tipo === 'jorge') return `Jorge: ${r.dias_angaco} días Angaco, ${r.dias_albardon} Albardón (semana ${fechaCorta(r.fecha)})`;
-  if (r.tipo === 'recordatorio') return `${r.tipo_recordatorio}: ${r.detalle}${r.monto ? ' · ' + peso(r.monto) : ''} · ${fechaCorta(r.fecha)}${r.recurrencia && r.recurrencia !== 'Única' ? ' (' + r.recurrencia.toLowerCase() + ')' : ''}`;
+  if (r.tipo === 'recordatorio') return `${r.tipo_recordatorio}: ${r.detalle}${r.monto ? ' · ' + peso(r.monto) : ''} · ${fechaCorta(r.fecha)}${r.recurrencia && r.recurrencia !== 'Única' ? ' (' + r.recurrencia.toLowerCase() + (r.hasta ? ' hasta ' + fechaCorta(r.hasta) : '') + ')' : ''}`;
   if (r.tipo === 'cheque_emitido') return `Cheque a ${r.proveedor} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
   if (r.tipo === 'mantenimiento') return `${r.rodado}: ${r.trabajo} · ${r.detalle}${r.horas_km ? ' · ' + num(r.horas_km, 0) + ' h/km' : ''}`;
   if (r.tipo === 'cheque_recibido') return `Cheque de ${r.librador} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
@@ -276,8 +288,10 @@ function htmlTarjeta(item) {
     }
     const lista = c.lista ? `list="dl-${item.id}-${c.k}"` : '';
     const dl = c.lista ? `<datalist id="dl-${item.id}-${c.k}">${c.lista().map(o => `<option value="${esc(o)}">`).join('')}</datalist>` : '';
-    const extra = c.t === 'number' ? 'inputmode="decimal" step="any"' : '';
-    return `<label class="${clase}">${esc(et)}<input type="${c.t}" data-k="${c.k}" value="${esc(v)}" ${extra} ${lista}>${dl}</label>`;
+    const extra = c.t === 'number' ? 'inputmode="decimal" autocomplete="off"' : '';
+    const tipo = c.t === 'number' ? 'text' : c.t;
+    const valor = c.t === 'number' ? enCampo(v) : v;
+    return `<label class="${clase}">${esc(et)}<input type="${tipo}" data-k="${c.k}" data-num="${c.t === 'number' ? 1 : ''}" value="${esc(valor)}" ${extra} ${lista}>${dl}</label>`;
   }).join('');
   const dudas = (r.confianza < 0.75 ? `<div class="aviso">Revisalo bien: no estoy seguro (${Math.round(r.confianza * 100)}%).</div>` : '') +
     (ini().admin && r.duda_clasificacion ? `<div class="aviso">🏷️ Duda de clasificación: ${esc(r.duda_clasificacion)}${r.alternativas ? ' · Alternativas: ' + esc(r.alternativas) : ''}</div>` : '');
@@ -286,14 +300,14 @@ function htmlTarjeta(item) {
     <div class="botones"><button class="secundario" data-accion="descartar">Descartar</button><button class="primario" data-accion="guardar">Guardar</button></div>`;
 }
 
-const REPINTAR = ['medio_pago', 'movimiento', 'unidad', 'finca', 'proveedor'];
+const REPINTAR = ['medio_pago', 'movimiento', 'unidad', 'finca', 'proveedor', 'recurrencia'];
 
 function conectarTarjeta(el, item) {
   el.querySelectorAll('[data-k]').forEach(inp => {
     const evento = inp.tagName === 'SELECT' || inp.type === 'checkbox' || inp.type === 'date' ? 'change' : 'input';
     inp.addEventListener(evento, () => {
       const k = inp.dataset.k;
-      item.registro[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? (inp.value === '' ? '' : Number(inp.value)) : inp.value;
+      item.registro[k] = inp.type === 'checkbox' ? inp.checked : inp.dataset.num ? aNumero(inp.value) : inp.value;
       if (k === 'categoria' && !(ini().inversionDepende || []).includes(inp.value)) {
         item.registro.inversion = (ini().inversiones || []).includes(inp.value);
         pintar(item);

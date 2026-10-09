@@ -222,7 +222,7 @@ function htmlAgenda(d) {
       ${cubrir || cobrar ? `<p class="vacio" style="margin-top:0">${cubrir ? 'A cubrir: <b>' + peso(cubrir) + '</b>' : ''}${cubrir && cobrar ? ' · ' : ''}${cobrar ? 'A cobrar: <b>' + peso(cobrar) + '</b>' : ''}</p>` : ''}
       <div class="tabla-scroll"><table><tbody>${l.map(x => `<tr>
         <td>${fechaCorta(x.fecha)}</td>
-        <td><b>${esc(x.tipo)}</b><br><small>${esc(x.detalle)}${x.recurrencia && x.recurrencia !== 'Única' ? ' · ' + esc(x.recurrencia.toLowerCase()) : ''}</small></td>
+        <td><b>${esc(x.tipo)}</b><br><small>${esc(x.detalle)}${x.recurrencia && x.recurrencia !== 'Única' ? ' · ' + esc(x.recurrencia.toLowerCase()) + (x.hasta ? ' hasta ' + fechaCorta(x.hasta) : '') : ''}</small></td>
         <td class="num">${x.monto ? peso(x.monto) : ''}</td>
         <td><button class="secundario chico" data-hecho="${esc(x.id)}" data-origen="${esc(x.origen)}" aria-label="Marcar como hecho">✓</button></td>
       </tr>`).join('')}</tbody></table></div></div>`;

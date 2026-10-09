@@ -3,7 +3,7 @@
 
 // ───────────────────────── Liquidación Albardón ─────────────────────────
 
-const L = { datos: null, valores: {}, sabado: false, genteDias: 0, genteSabado: 0, otros: 0, otrosDetalle: '', detalle: true, error: '' };
+const L = { datos: null, valores: {}, sabado: {}, genteDias: 0, otros: 0, otrosDetalle: '', detalle: true, error: '' };
 
 async function abrirLiquidacion() {
   const el = $('liquidacion');
@@ -13,6 +13,7 @@ async function abrirLiquidacion() {
     L.error = '';
     L.datos.personas.forEach(p => {
       if (!(p.persona in L.valores)) L.valores[p.persona] = p.porDia ? 0 : p.sugerido;
+      if (p.porDia && !(p.persona in L.sabado)) L.sabado[p.persona] = !!p.sabadoHabitual;
     });
   } catch (e) {
     L.error = e instanceof ErrorRed ? 'Sin señal. La liquidación necesita conexión.' : e.message;
@@ -26,13 +27,13 @@ function calcularLiquidacion() {
   d.personas.forEach(p => {
     const v = Number(L.valores[p.persona]) || 0;
     if (p.porDia) {
-      const dias = v + (L.sabado && v > 0 ? 0.5 : 0);
+      const dias = v + (L.sabado[p.persona] ? 0.5 : 0);
       if (dias) lineas.push({ concepto: `${p.persona} (${num(dias)} días)`, monto: dias * p.tarifa });
     } else if (v) {
       lineas.push({ concepto: p.persona, monto: v });
     }
   });
-  const gente = (Number(L.genteDias) || 0) + (L.sabado ? (Number(L.genteSabado) || 0) * 0.5 : 0);
+  const gente = Number(L.genteDias) || 0;
   if (gente) lineas.push({ concepto: `Gente (${num(gente)} jornales)`, monto: gente * d.tarifaGente });
   if (Number(L.otros)) lineas.push({ concepto: L.otrosDetalle || 'Otros', monto: Number(L.otros) });
   const sueldos = lineas.reduce((a, l) => a + l.monto, 0);
@@ -57,10 +58,11 @@ function pintarLiquidacion() {
   const gastos = s.gastosDesdeUltimoAporte;
   const filasPersonas = d.personas.map(p => p.porDia
     ? `<div class="fila-liq"><span>${esc(p.persona)} <small>(${peso(p.tarifa)}/día)</small></span>
-        <input type="number" inputmode="decimal" step="0.5" min="0" data-persona="${esc(p.persona)}" value="${L.valores[p.persona] || ''}" placeholder="días">
-        <small>Días lun–vie en Albardón</small></div>`
+        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="días">
+        <label class="check" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;font-size:14px">
+          <input type="checkbox" data-sabado="${esc(p.persona)}" ${L.sabado[p.persona] ? 'checked' : ''}> Días lun–vie en Albardón · + sábado (½ día)</label></div>`
     : `<div class="fila-liq"><span>${esc(p.persona)}</span>
-        <input type="number" inputmode="decimal" min="0" data-persona="${esc(p.persona)}" value="${L.valores[p.persona] || ''}" placeholder="$">
+        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="$">
         ${p.nota ? `<small>${esc(p.nota)}</small>` : ''}</div>`).join('');
 
   el.innerHTML = `${L.error ? `<div class="aviso">${esc(L.error)}</div>` : ''}
@@ -72,12 +74,10 @@ function pintarLiquidacion() {
     <div class="card"><h2>Sueldos a pagar el viernes (Albardón)</h2>
       ${filasPersonas}
       <div class="fila-liq"><span>Gente sin nombre <small>(${peso(d.tarifaGente)}/jornal)</small></span>
-        <input type="number" inputmode="decimal" step="0.5" min="0" id="liq-gente" value="${L.genteDias || ''}" placeholder="jornales">
-        <small>Total de jornales lun–vie</small></div>
+        <input type="text" inputmode="decimal" autocomplete="off" id="liq-gente" value="${enCampo(L.genteDias || '')}" placeholder="jornales">
+        <small>Total de jornales de la semana (el sábado cuenta ½: ej. 4 personas lun–vie + sábado = 22)</small></div>
       <div class="fila-liq"><input class="campo" id="liq-otros-det" value="${esc(L.otrosDetalle)}" placeholder="Otro concepto (opcional)" style="text-align:left">
-        <input type="number" inputmode="decimal" min="0" id="liq-otros" value="${L.otros || ''}" placeholder="$"></div>
-      <label class="check" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="liq-sabado" ${L.sabado ? 'checked' : ''}> Se trabaja el sábado (medio día)</label>
-      ${L.sabado ? `<div class="fila-liq"><span>Gente sin nombre el sábado</span><input type="number" min="0" id="liq-gente-sab" value="${L.genteSabado || ''}" placeholder="personas"></div>` : ''}
+        <input type="text" inputmode="decimal" autocomplete="off" id="liq-otros" value="${enCampo(L.otros || '')}" placeholder="$"></div>
     </div>
     <div class="card">
       <div class="total-liq"><span>Sueldos</span><b>${peso(c.sueldos)}</b></div>
@@ -93,12 +93,11 @@ function pintarLiquidacion() {
     </div>`;
 
   const re = () => pintarLiquidacion();
-  el.querySelectorAll('[data-persona]').forEach(i => i.onchange = () => { L.valores[i.dataset.persona] = Number(i.value) || 0; re(); });
-  $('liq-gente').onchange = e => { L.genteDias = Number(e.target.value) || 0; re(); };
-  $('liq-otros').onchange = e => { L.otros = Number(e.target.value) || 0; re(); };
+  el.querySelectorAll('[data-persona]').forEach(i => i.onchange = () => { L.valores[i.dataset.persona] = aNumero(i.value) || 0; re(); });
+  el.querySelectorAll('[data-sabado]').forEach(i => i.onchange = () => { L.sabado[i.dataset.sabado] = i.checked; re(); });
+  $('liq-gente').onchange = e => { L.genteDias = aNumero(e.target.value) || 0; re(); };
+  $('liq-otros').onchange = e => { L.otros = aNumero(e.target.value) || 0; re(); };
   $('liq-otros-det').onchange = e => { L.otrosDetalle = e.target.value; re(); };
-  $('liq-sabado').onchange = e => { L.sabado = e.target.checked; re(); };
-  if ($('liq-gente-sab')) $('liq-gente-sab').onchange = e => { L.genteSabado = Number(e.target.value) || 0; re(); };
   $('liq-detalle').onchange = e => { L.detalle = e.target.checked; re(); };
   $('liq-copiar').onclick = async () => {
     try { await navigator.clipboard.writeText($('liq-mensaje').value); $('liq-copiar').textContent = 'Copiado ✓'; }
