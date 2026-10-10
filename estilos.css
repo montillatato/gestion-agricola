@@ -135,3 +135,27 @@ th { color: var(--tinta2); font-weight: 500; font-size: 13px; }
 .ayuda .ejemplo { background: var(--mia); border-radius: 10px; padding: 8px 12px; margin: 4px 0; color: var(--tinta); }
 #bloqueo { position: fixed; inset: 0; background: var(--fondo); display: none; align-items: center; justify-content: center; padding: 24px; text-align: center; z-index: 20; }
 #bloqueo.visible { display: flex; }
+
+/* Plan de fertilización por cuadro */
+.tabla-plan th, .tabla-plan td { text-align: center; padding: 6px 4px; }
+.tabla-plan { table-layout: fixed; }
+.tabla-plan .fila-producto th { text-align: left; font-weight: 600; color: var(--tinta); padding: 10px 2px 2px; border-bottom: 0; }
+.tabla-plan td { border-bottom: 0; }
+.tabla-plan .mes-actual { color: var(--verde); font-weight: 700; }
+.celda-plan { border-radius: 8px; border: 2px solid var(--superficie); min-width: 52px; font-variant-numeric: tabular-nums; }
+.celda-plan b { display: block; font-size: 15px; }
+.celda-plan small { display: block; font-size: 11px; color: var(--tinta2); }
+.celda-plan.ok { background: color-mix(in srgb, var(--s3) 22%, transparent); }
+.celda-plan.parcial { background: color-mix(in srgb, #eda100 22%, transparent); }
+.celda-plan.actual { background: color-mix(in srgb, var(--s1) 16%, transparent); }
+.celda-plan.atrasada { background: color-mix(in srgb, #e34948 20%, transparent); }
+.celda-plan.extra { background: color-mix(in srgb, var(--total) 18%, transparent); }
+.celda-plan.vacia, .celda-plan.futura { color: var(--muted); }
+.celda-plan.total { background: color-mix(in srgb, var(--tinta) 6%, transparent); }
+.leyenda-plan { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; margin: 10px 0 4px; }
+.leyenda-plan span { padding: 2px 8px; border-radius: 6px; }
+.leyenda-plan .ok { background: color-mix(in srgb, var(--s3) 22%, transparent); }
+.leyenda-plan .parcial { background: color-mix(in srgb, #eda100 22%, transparent); }
+.leyenda-plan .actual { background: color-mix(in srgb, var(--s1) 16%, transparent); }
+.leyenda-plan .atrasada { background: color-mix(in srgb, #e34948 20%, transparent); }
+.leyenda-plan .futura { color: var(--muted); border: 1px solid var(--grilla); }

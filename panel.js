@@ -38,6 +38,8 @@ function pintarPanel() {
   el.innerHTML = seg + estado + cuerpo;
   el.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { P.seccion = S.seccionPanel = b.dataset.sec; persistir(); pintarPanel(); });
   el.querySelectorAll('[data-filtro]').forEach(s => s.onchange = () => { P[s.dataset.filtro] = s.value; pintarPanel(); });
+  el.querySelectorAll('[data-vfert]').forEach(b => b.onclick = () => { P.vistaFert = b.dataset.vfert; pintarPanel(); });
+  el.querySelectorAll('[data-cuadro]').forEach(b => b.onclick = () => { P.cuadroFert = b.dataset.cuadro; pintarPanel(); });
   el.querySelectorAll('[data-hecho]').forEach(b => b.onclick = async () => {
     if (!confirm('¿Marcar como hecho? Se marca para los dos.')) return;
     b.disabled = true;
@@ -156,6 +158,50 @@ function barras(items, total, fmt) {
 // ───────────────────────── Fertilización ─────────────────────────
 
 function htmlFert(d) {
+  P.vistaFert = P.vistaFert || 'plan';
+  const sub = `<div class="seg" role="group" style="margin-top:4px">${[['plan', 'Plan por cuadro'], ['totales', 'Stock y totales']].map(([k, et]) =>
+    `<button data-vfert="${k}" aria-pressed="${P.vistaFert === k}">${et}</button>`).join('')}</div>`;
+  return sub + (P.vistaFert === 'plan' ? htmlPlanCuadros(d) : htmlFertTotales(d));
+}
+
+const MES_CORTO = k => ({ '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr', '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Ago', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic' }[k.slice(5, 7)]);
+
+function htmlPlanCuadros(d) {
+  const p = d.fertPlan;
+  if (!p || !Object.keys(p.fincas).length) return '<div class="card"><p class="vacio">Todavía no hay plan de fertilización para esta campaña.</p></div>';
+  const fincas = Object.keys(p.fincas);
+  if (!fincas.includes(P.fincaFert)) P.fincaFert = fincas[0];
+  const cuadros = p.fincas[P.fincaFert];
+  if (!cuadros.some(c => c.cuadro === P.cuadroFert)) P.cuadroFert = cuadros[0].cuadro;
+  const sel = fincas.length > 1 ? `<div class="filtros"><select data-filtro="fincaFert">${fincas.map(x =>
+    `<option${x === P.fincaFert ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></div>` : '';
+  const chips = `<div class="seg" role="group">${cuadros.map(c =>
+    `<button data-cuadro="${esc(c.cuadro)}" aria-pressed="${c.cuadro === P.cuadroFert}">${c.cuadro === 'Sin cuadro' ? 'Sin cuadro' : 'C' + esc(c.cuadro)}</button>`).join('')}</div>`;
+  const c = cuadros.find(x => x.cuadro === P.cuadroFert);
+  const estado = (m, mes) => {
+    if (!m.plan && m.aplicado) return 'extra';
+    if (!m.plan) return 'vacia';
+    if (m.aplicado >= m.plan * 0.98) return 'ok';
+    if (mes < p.mesActual) return 'atrasada';
+    if (mes === p.mesActual) return m.aplicado ? 'parcial' : 'actual';
+    return m.aplicado ? 'parcial' : 'futura';
+  };
+  const filas = c.productos.map(x => `<tr class="fila-producto"><th colspan="${p.meses.length + 1}">${esc(x.producto)} <small class="vacio">(${esc(x.unidad)})</small></th></tr><tr>${p.meses.map(mes => {
+    const m = x.meses[mes] || { plan: 0, dosis: [], aplicado: 0 };
+    const e = estado(m, mes);
+    if (e === 'vacia') return '<td class="celda-plan vacia">—</td>';
+    const dosis = m.dosis.length ? `${m.dosis.length > 1 && m.dosis.every(v => v === m.dosis[0]) ? m.dosis.length + '×' + num(m.dosis[0]) : m.dosis.map(v => num(v)).join('+')}/ha` : 'fuera de plan';
+    return `<td class="celda-plan ${e}"><small>${dosis}</small><b>${num(m.plan, 0)}</b><small>${m.aplicado ? '✓ ' + num(m.aplicado, 0) : 'sin aplicar'}</small></td>`;
+  }).join('')}<td class="celda-plan total"><b>${num(x.aplicado, 0)}</b><small>de ${num(x.plan, 0)}</small></td></tr>`).join('');
+  const titulo = c.cuadro === 'Sin cuadro' ? 'Aplicaciones sin cuadro asignado' : `Cuadro ${esc(c.cuadro)}${c.ha ? ' · ' + num(c.ha) + ' ha' : ''}${c.variedad ? ' · ' + esc(c.variedad) : ''}`;
+  return sel + chips + `<div class="card"><h2>${titulo}</h2>
+    <div class="tabla-scroll"><table class="tabla-plan"><thead><tr>${p.meses.map(mes =>
+      `<th class="${mes === p.mesActual ? 'mes-actual' : ''}">${MES_CORTO(mes)}</th>`).join('')}<th>Total</th></tr></thead><tbody>${filas}</tbody></table></div>
+    <p class="leyenda-plan"><span class="ok">aplicado</span><span class="parcial">en curso</span><span class="actual">este mes</span><span class="atrasada">atrasado</span><span class="futura">próximo</span></p>
+    <p class="vacio" style="margin:0">Cada celda: dosis por ha · total del mes para el cuadro · lo aplicado.</p></div>`;
+}
+
+function htmlFertTotales(d) {
   const f = d.fertilizacion;
   if (!f || !Object.keys(f.fincas).length) return '<div class="card"><p class="vacio">Todavía no hay plan ni movimientos de fertilización para esta campaña.</p></div>';
   const fincas = Object.keys(f.fincas);
