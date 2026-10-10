@@ -190,7 +190,7 @@ function htmlPlanCuadros(d) {
     const m = x.meses[mes] || { plan: 0, dosis: [], aplicado: 0 };
     const e = estado(m, mes);
     if (e === 'vacia') return '<td class="celda-plan vacia">—</td>';
-    const dosis = m.dosis.length ? (m.dosis.length > 1 && m.dosis.every(v => v === m.dosis[0]) ? m.dosis.length + '×' + num(m.dosis[0]) : m.dosis.map(v => num(v)).join('+')) : 'extra';
+    const dosis = m.dosis.length ? (m.dosis.length > 1 && m.dosis.every(v => v === m.dosis[0]) ? m.dosis.length + '×' + num(m.dosis[0]) : m.dosis.map(v => num(v)).join('+')) + '/ha' : 'extra';
     return `<td class="celda-plan ${e}"><small>${dosis}</small><b>${num(m.plan, 0)}</b><small>${m.aplicado ? '✓ ' + num(m.aplicado, 0) : 'sin aplicar'}</small></td>`;
   }).join('')}<td class="celda-plan total"><b>${num(x.aplicado, 0)}</b><small>de ${num(x.plan, 0)}</small></td></tr>`).join('');
   const titulo = c.cuadro === 'Sin cuadro' ? 'Aplicaciones sin cuadro asignado' : `Cuadro ${esc(c.cuadro)}${c.ha ? ' · ' + num(c.ha) + ' ha' : ''}${c.variedad ? ' · ' + esc(c.variedad) : ''}`;
