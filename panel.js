@@ -190,7 +190,7 @@ function htmlPlanCuadros(d) {
     const m = x.meses[mes] || { plan: 0, dosis: [], aplicado: 0 };
     const e = estado(m, mes);
     if (e === 'vacia') return '<td class="celda-plan vacia">—</td>';
-    const dosis = m.dosis.length ? `${m.dosis.length > 1 && m.dosis.every(v => v === m.dosis[0]) ? m.dosis.length + '×' + num(m.dosis[0]) : m.dosis.map(v => num(v)).join('+')}/ha` : 'fuera de plan';
+    const dosis = m.dosis.length ? (m.dosis.length > 1 && m.dosis.every(v => v === m.dosis[0]) ? m.dosis.length + '×' + num(m.dosis[0]) : m.dosis.map(v => num(v)).join('+')) : 'extra';
     return `<td class="celda-plan ${e}"><small>${dosis}</small><b>${num(m.plan, 0)}</b><small>${m.aplicado ? '✓ ' + num(m.aplicado, 0) : 'sin aplicar'}</small></td>`;
   }).join('')}<td class="celda-plan total"><b>${num(x.aplicado, 0)}</b><small>de ${num(x.plan, 0)}</small></td></tr>`).join('');
   const titulo = c.cuadro === 'Sin cuadro' ? 'Aplicaciones sin cuadro asignado' : `Cuadro ${esc(c.cuadro)}${c.ha ? ' · ' + num(c.ha) + ' ha' : ''}${c.variedad ? ' · ' + esc(c.variedad) : ''}`;
@@ -198,7 +198,7 @@ function htmlPlanCuadros(d) {
     <div class="tabla-scroll"><table class="tabla-plan"><thead><tr>${p.meses.map(mes =>
       `<th class="${mes === p.mesActual ? 'mes-actual' : ''}">${MES_CORTO(mes)}</th>`).join('')}<th>Total</th></tr></thead><tbody>${filas}</tbody></table></div>
     <p class="leyenda-plan"><span class="ok">aplicado</span><span class="parcial">en curso</span><span class="actual">este mes</span><span class="atrasada">atrasado</span><span class="futura">próximo</span></p>
-    <p class="vacio" style="margin:0">Cada celda: dosis por ha · total del mes para el cuadro · lo aplicado.</p></div>`;
+    <p class="vacio" style="margin:0">Cada celda: arriba la dosis por hectárea (ej. 2×20 = dos aplicaciones de 20 por ha) · al medio el total del mes para todo el cuadro (dosis × hectáreas) · abajo lo aplicado.</p></div>`;
 }
 
 function htmlFertTotales(d) {

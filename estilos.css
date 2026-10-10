@@ -144,7 +144,7 @@ th { color: var(--tinta2); font-weight: 500; font-size: 13px; }
 .tabla-plan .mes-actual { color: var(--verde); font-weight: 700; }
 .celda-plan { border-radius: 8px; border: 2px solid var(--superficie); min-width: 52px; font-variant-numeric: tabular-nums; }
 .celda-plan b { display: block; font-size: 15px; }
-.celda-plan small { display: block; font-size: 11px; color: var(--tinta2); }
+.celda-plan small { display: block; font-size: 11px; color: var(--tinta2); overflow-wrap: anywhere; }
 .celda-plan.ok { background: color-mix(in srgb, var(--s3) 22%, transparent); }
 .celda-plan.parcial { background: color-mix(in srgb, #eda100 22%, transparent); }
 .celda-plan.actual { background: color-mix(in srgb, var(--s1) 16%, transparent); }

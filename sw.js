@@ -1,5 +1,5 @@
 /* Guarda la app en el teléfono para que abra sin señal. Subir VERSION cada vez que se cambian los archivos. */
-const VERSION = 'ga-v16';
+const VERSION = 'ga-v17';
 const ARCHIVOS = ['./', 'index.html', 'estilos.css', 'app.js', 'panel.js', 'admin.js', 'manifest.webmanifest', 'icono-180.png', 'icono-192.png', 'icono-512.png'];
 
 self.addEventListener('install', e => {
