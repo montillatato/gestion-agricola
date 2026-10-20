@@ -3,7 +3,11 @@
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const peso = n => '$ ' + Math.round(Number(n) || 0).toLocaleString('es-AR');
+/** $ 1.559.854,70 — muestra centavos solo si los hay. */
+const peso = n => {
+  const v = Math.round((Number(n) || 0) * 100) / 100;
+  return '$ ' + v.toLocaleString('es-AR', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+};
 const num = (n, d = 1) => (Number(n) || 0).toLocaleString('es-AR', { maximumFractionDigits: d });
 /** Interpreta números escritos a la argentina: "5,5" · "1.500.000" · "1.500,50" · "$ 85.000". */
 const aNumero = t => {
@@ -159,7 +163,7 @@ function enviar() {
 
 // ───────────────────────── Tarjetas ─────────────────────────
 
-const TITULO_TIPO = { gasto: 'Gasto', insumo: 'Insumo', deuda: 'Compra a cuenta (deuda)', jorge: 'Días de Jorge', aporte_sergio: 'Aporte de Sergio', cheque_recibido: 'Cheque a cobrar', mantenimiento: 'Mantenimiento', recordatorio: 'Recordatorio', cheque_emitido: 'Cheque a cubrir (ya en costos)' };
+const TITULO_TIPO = { gasto: 'Gasto', insumo: 'Insumo', deuda: 'Compra en cuenta corriente', jorge: 'Días de Jorge', aporte_sergio: 'Aporte de Sergio', cheque_recibido: 'Cheque a cobrar', mantenimiento: 'Mantenimiento', recordatorio: 'Recordatorio', cheque_emitido: 'Cheque a cubrir (ya en costos)', sueldo: 'Nuevo sueldo' };
 const ini = () => S.ini || { fincas: ['Angaco'], categorias: [], medios: [], movimientos: [], unidades: [], cuadros: [], productos: [], personas: [], proveedores: [] };
 const cuadrosDe = finca => ['', ...ini().cuadros.filter(c => c.finca === finca).map(c => c.cuadro)];
 
@@ -199,6 +203,7 @@ const CAMPOS = {
   deuda: [
     { k: 'proveedor', et: 'Proveedor', t: 'text', lista: () => ini().proveedores, ancho: true },
     { k: 'detalle', et: 'Detalle', t: 'text', ancho: true },
+    { k: 'categoria', et: 'Categoría', t: 'select', op: () => ['', ...ini().categorias], ancho: true, si: () => !!ini().admin },
     { k: 'monto', et: 'Monto ($)', t: 'number' },
     { k: 'fecha', et: 'Fecha', t: 'date' },
     { k: 'finca', et: 'Finca', t: 'select', op: () => ini().fincas },
@@ -223,6 +228,12 @@ const CAMPOS = {
     { k: 'recurrencia', et: 'Se repite', t: 'select', op: () => ini().recurrencias || [] },
     { k: 'hasta', et: 'Hasta (última vez, opcional)', t: 'date', si: r => r.recurrencia && r.recurrencia !== 'Única' },
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }
+  ],
+  sueldo: [
+    { k: 'persona', et: 'Persona', t: 'select', op: () => ['', ...ini().personas], ancho: true },
+    { k: 'monto', et: 'Nuevo monto por semana ($)', t: 'number' },
+    { k: 'fecha', et: 'Desde', t: 'date' },
+    { k: 'notas', et: 'De dónde sale', t: 'text', ancho: true }
   ],
   cheque_emitido: [
     { k: 'proveedor', et: 'A quién', t: 'text', lista: () => ini().proveedores, ancho: true },
@@ -258,6 +269,7 @@ function resumenRegistro(r) {
   if (r.tipo === 'jorge') return `Jorge: ${r.dias_angaco} días Angaco, ${r.dias_albardon} Albardón (semana ${fechaCorta(r.fecha)})`;
   if (r.tipo === 'recordatorio') return `${r.tipo_recordatorio}: ${r.detalle}${r.monto ? ' · ' + peso(r.monto) : ''} · ${fechaCorta(r.fecha)}${r.recurrencia && r.recurrencia !== 'Única' ? ' (' + r.recurrencia.toLowerCase() + (r.hasta ? ' hasta ' + fechaCorta(r.hasta) : '') + ')' : ''}`;
   if (r.tipo === 'cheque_emitido') return `Cheque a ${r.proveedor} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
+  if (r.tipo === 'sueldo') return `${r.persona}: nuevo semanal ${peso(r.monto)}`;
   if (r.tipo === 'mantenimiento') return `${r.rodado}: ${r.trabajo} · ${r.detalle}${r.horas_km ? ' · ' + num(r.horas_km, 0) + ' h/km' : ''}`;
   if (r.tipo === 'cheque_recibido') return `Cheque de ${r.librador} · ${peso(r.monto)} · cobro ${fechaCorta(r.fecha)}`;
   return `Aporte de Sergio · ${peso(r.monto)}`;
@@ -274,7 +286,7 @@ function htmlTarjeta(item) {
       ${item.error ? `<div class="aviso">⚠️ ${esc(item.error)}</div>` : ''}`;
   }
   const titulo = TITULO_TIPO[r.tipo] + (r.tipo === 'insumo' && r.movimiento ? ' · ' + r.movimiento : '');
-  const campos = CAMPOS[r.tipo].map(c => {
+  const campos = (CAMPOS[r.tipo] || []).map(c => {
     const visible = !c.si || c.si(r);
     const et = typeof c.et === 'function' ? c.et(r) : c.et;
     const clase = (c.ancho ? 'ancho' : '') + (visible ? '' : ' oculto');
@@ -297,7 +309,7 @@ function htmlTarjeta(item) {
     (ini().admin && r.duda_clasificacion ? `<div class="aviso">🏷️ Duda de clasificación: ${esc(r.duda_clasificacion)}${r.alternativas ? ' · Alternativas: ' + esc(r.alternativas) : ''}</div>` : '');
   const error = item.error ? `<div class="aviso">⚠️ ${esc(item.error)}</div>` : '';
   return `<h3>${esc(titulo)}</h3>${campos}${dudas}${error}
-    <div class="botones"><button class="secundario" data-accion="descartar">Descartar</button><button class="primario" data-accion="guardar">Guardar</button></div>`;
+    <div class="botones"><button class="secundario" data-accion="descartar">${item.alGuardar ? 'Cancelar' : 'Descartar'}</button><button class="primario" data-accion="guardar">${item.alGuardar ? 'Guardar cambios y validar' : 'Guardar'}</button></div>`;
 }
 
 const REPINTAR = ['medio_pago', 'movimiento', 'unidad', 'finca', 'proveedor', 'recurrencia'];
@@ -318,8 +330,9 @@ function conectarTarjeta(el, item) {
     if (REPINTAR.includes(inp.dataset.k) && inp.tagName !== 'SELECT') inp.addEventListener('change', () => pintar(item));
   });
   const b = sel => el.querySelector(`[data-accion="${sel}"]`);
-  if (b('descartar')) b('descartar').onclick = () => { item.estado = 'descartado'; pintar(item); persistir(); };
-  if (b('guardar')) b('guardar').onclick = () => guardarTarjeta(item);
+  // En modo edición (desde "Validar") los botones hacen otra cosa: alCancelar / alGuardar.
+  if (b('descartar')) b('descartar').onclick = () => { if (item.alCancelar) return item.alCancelar(); item.estado = 'descartado'; pintar(item); persistir(); };
+  if (b('guardar')) b('guardar').onclick = () => item.alGuardar ? item.alGuardar(item) : guardarTarjeta(item);
   if (b('deshacer')) b('deshacer').onclick = () => {
     if (!confirm('¿Anular este registro?')) return;
     item.error = '';

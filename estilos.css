@@ -1,3 +1,8 @@
+/* Cuenta corriente por proveedor (Panel → Cuentas) */
+details.cc { border-bottom: 1px solid var(--grilla); padding: 4px 0; }
+details.cc summary { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; cursor: pointer; font-size: 15px; }
+details.cc summary b { font-variant-numeric: tabular-nums; }
+
 :root {
   --verde: #2e7d32; --verde-osc: #1b5e20; --fondo: #eef3ea; --superficie: #fff; --mia: #dcf3d0;
   --tinta: #1d2a1d; --tinta2: #52514e; --muted: #898781; --borde: #d5dfd0; --grilla: #e1e0d9; --base: #c3c2b7;

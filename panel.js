@@ -324,12 +324,19 @@ function htmlCuentas(d) {
   const cobrar = `<div class="card"><h2>Cheques a cobrar${lista.length ? ' · ' + peso(totalCo) : ''}</h2>${lista.length ? `<div class="tabla-scroll"><table><thead><tr><th>Cobro</th><th>De</th><th>Banco / Nº</th><th class="num">Monto</th></tr></thead><tbody>${
     lista.map(c => `<tr><td>${fechaCorta(c.cobro)}${c.cobro <= hoy ? ' <b style="color:var(--alerta)">hoy</b>' : ''}</td><td>${esc(c.librador)}</td>
       <td>${esc([c.banco, c.numero].filter(Boolean).join(' · '))}</td><td class="num">${peso(c.monto)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="vacio">No hay cheques para cobrar.</p>'}</div>`;
-  const proveedores = `<div class="card"><h2>Cuentas corrientes con proveedores</h2>${d.proveedores.length ? `<div class="tabla-scroll"><table><thead><tr><th>Proveedor</th><th class="num">Debemos</th></tr></thead><tbody>${
-    d.proveedores.map(p => `<tr><td>${esc(p.proveedor)}</td><td class="num">${peso(p.saldo)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="vacio">Sin saldos pendientes.</p>'}</div>`;
+  const totalCC = d.proveedores.reduce((a, p) => a + p.saldo, 0);
+  const proveedores = `<div class="card"><h2>Cuentas corrientes${d.proveedores.length ? ' · debemos ' + peso(totalCC) : ''}</h2>${d.proveedores.length
+    ? `<p class="vacio" style="margin-top:0">Tocá un proveedor para ver sus compras y pagos.</p>` + d.proveedores.map(p => `<details class="cc">
+        <summary><span>${esc(p.proveedor)}</span><b>${peso(p.saldo)}</b></summary>
+        <div class="tabla-scroll"><table><tbody>${(p.movimientos || []).map(m => `<tr>
+          <td>${fechaCorta(m.fecha)}</td><td>${m.tipo === 'compra' ? '🧾' : '💸'} ${esc(m.detalle)}<br><small class="vacio">${esc(m.finca || '')}</small></td>
+          <td class="num">${m.tipo === 'compra' ? '' : '− '}${peso(m.monto)}</td></tr>`).join('')}</tbody></table></div>
+        <small class="vacio">Compras ${peso(p.deuda)} · pagado ${peso(p.pagado)}</small></details>`).join('')
+    : '<p class="vacio">No hay deudas en cuenta corriente. Se cargan por chat: "Sacamos en cuenta corriente en la ferretería X por 80 mil".</p>'}</div>`;
   const ultimos = `<div class="card"><h2>Últimos registros</h2>${d.ultimos.length ? `<div class="tabla-scroll"><table><tbody>${d.ultimos.map(u =>
     `<tr><td>${esc(u.registrado)}<br><small class="vacio">${esc(u.usuario)}</small></td><td>${esc(u.tipo)}<br><small>${esc(u.resumen)}</small></td><td>${esc(u.estado)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="vacio">Sin registros todavía.</p>'}
     ${d.urlBase ? `<p><a href="${esc(d.urlBase)}" target="_blank" rel="noopener">Abrir la base completa ↗</a></p>` : ''}</div>`;
-  return sergio + cheques + cobrar + proveedores + ultimos;
+  return proveedores + sergio + cheques + cobrar + ultimos;
 }
 
 // ───────────────────────── Tooltip ─────────────────────────

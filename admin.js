@@ -12,7 +12,7 @@ async function abrirLiquidacion() {
     L.datos = await api('liquidacion');
     L.error = '';
     L.datos.personas.forEach(p => {
-      if (!(p.persona in L.valores)) L.valores[p.persona] = p.porDia ? 0 : p.sugerido;
+      if (!(p.persona in L.valores)) L.valores[p.persona] = p.porDia ? (p.diasSugeridos || 0) : p.sugerido;
     });
   } catch (e) {
     L.error = e instanceof ErrorRed ? 'Sin señal. La liquidación necesita conexión.' : e.message;
@@ -58,7 +58,7 @@ function pintarLiquidacion() {
   const filasPersonas = d.personas.map(p => p.porDia
     ? `<div class="fila-liq"><span>${esc(p.persona)} <small>(${peso(p.tarifa)}/día)</small></span>
         <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="días">
-        <small>Días en Albardón · medio día = ,5 (ej.: 5,5)</small></div>`
+        <small>Días en Albardón · medio día = ,5 (ej.: 5,5)${p.nota && p.diasSugeridos !== undefined ? '<br>' + esc(p.nota) : ''}</small></div>`
     : `<div class="fila-liq"><span>${esc(p.persona)}</span>
         <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="$">
         ${p.nota ? `<small>${esc(p.nota)}</small>` : ''}</div>`).join('');
@@ -106,12 +106,13 @@ function pintarLiquidacion() {
 
 let pendientes = null;
 let dudas = [];
+let credito = [];
 
 async function abrirValidar() {
   const el = $('validar');
   if (!pendientes) el.innerHTML = '<p class="vacio">Cargando…</p>';
   try {
-    [pendientes, dudas] = await Promise.all([api('pendientes'), api('dudas')]);
+    [pendientes, dudas, credito] = await Promise.all([api('pendientes'), api('dudas'), api('gastosCredito')]);
     pintarValidar();
   } catch (e) {
     el.innerHTML = `<div class="aviso">${esc(e instanceof ErrorRed ? 'Sin señal. Validar necesita conexión.' : e.message)}</div>`;
@@ -133,10 +134,23 @@ function htmlDudas() {
     </div>`).join('')}</div>`;
 }
 
+/** Gastos cargados como "Crédito": si en realidad eran compras en cuenta corriente, se pasan a la cuenta del proveedor. */
+function htmlCredito() {
+  if (!credito.length) return '';
+  return `<div class="card"><h2>💳 ${credito.length} ${credito.length === 1 ? 'gasto cargado' : 'gastos cargados'} como "Crédito"</h2>
+    <p class="vacio" style="margin-top:0">Si fue con tarjeta de crédito, dejalo como está. Si fue una compra en cuenta corriente, tocá "Era cuenta corriente": sale de la planilla de costos (se carga cuando se pague) y pasa a la deuda con ese proveedor.</p>
+    ${credito.map(x => `<div class="pend" data-credito="${esc(x.id)}">
+      <div class="meta">${esc(x.finca)} · ${fechaCorta(x.fecha)} · ${esc(x.categoria)}</div>
+      <div><b>${esc(x.detalle)}</b> · ${peso(x.monto)}</div>
+      <input class="campo" data-prov value="${esc(x.proveedor || '')}" placeholder="Proveedor (obligatorio)">
+      <div class="acciones"><button class="primario chico" data-cc>↪️ Era cuenta corriente</button><button class="secundario chico" data-tarjeta>💳 Fue con tarjeta</button></div>
+    </div>`).join('')}</div>`;
+}
+
 function pintarValidar() {
   const el = $('validar');
-  if (!pendientes.length && !dudas.length) { el.innerHTML = '<div class="card"><p>✅ No hay nada pendiente de validar ni de clasificar.</p></div>'; return; }
-  el.innerHTML = htmlDudas() + (!pendientes.length ? '' : `<div class="card"><h2>${pendientes.length} pendientes de validar</h2>
+  if (!pendientes.length && !dudas.length && !credito.length) { el.innerHTML = '<div class="card"><p>✅ No hay nada pendiente de validar ni de clasificar.</p></div>'; return; }
+  el.innerHTML = htmlCredito() + htmlDudas() + (!pendientes.length ? '' : `<div class="card"><h2>${pendientes.length} pendientes de validar</h2>
     <p class="vacio" style="margin-top:0">Rechazar un gasto lo saca de la planilla de la finca. Si te equivocás, lo cambiás en la hoja LOG de la base.</p>
     ${pendientes.map(p => `<div class="pend" data-id="${esc(p.id)}">
       <div class="meta">${esc(p.tipo)} · ${esc(p.registrado)} · ${esc(p.usuario)}${p.confianza !== '' && Number(p.confianza) < 0.75 ? ' · <b style="color:var(--alerta)">confianza ' + Math.round(p.confianza * 100) + '%</b>' : ''}</div>
@@ -144,7 +158,7 @@ function pintarValidar() {
       ${p.entrada ? `<div class="entrada">“${esc(p.entrada)}”</div>` : ''}
       ${p.corregido ? `<div class="meta">✏️ Corregido: ${esc(p.corregido)}</div>` : ''}
       ${p.comprobante ? `<a class="meta" href="${esc(p.comprobante)}" target="_blank" rel="noopener">Ver comprobante ↗</a>` : ''}
-      <div class="acciones"><button class="primario chico" data-estado="✅ Validado">✅ Validar</button><button class="secundario chico" data-estado="❌ Rechazado">❌ Rechazar</button></div>
+      <div class="acciones"><button class="primario chico" data-estado="✅ Validado">✅ Validar</button>${p.datos ? '<button class="secundario chico" data-editar>✏️ Editar</button>' : ''}<button class="secundario chico" data-estado="❌ Rechazado">❌ Rechazar</button></div>
     </div>`).join('')}
     <button class="secundario" id="validar-todos" style="width:100%;margin-top:12px">✅ Validar todos (${pendientes.length})</button></div>`);
 
@@ -174,6 +188,59 @@ function pintarValidar() {
       div.querySelectorAll('button').forEach(x => { x.disabled = false; });
     }
   }));
+  el.querySelectorAll('[data-credito]').forEach(div => div.querySelector('[data-tarjeta]').onclick = async () => {
+    try {
+      await api('confirmarCredito', { id: div.dataset.credito });
+      credito = credito.filter(x => x.id !== div.dataset.credito);
+      pintarValidar();
+    } catch (e) { alert(e instanceof ErrorRed ? 'Sin señal: probá de nuevo cuando haya.' : e.message); }
+  });
+  el.querySelectorAll('[data-credito]').forEach(div => div.querySelector('[data-cc]').onclick = async () => {
+    const proveedor = div.querySelector('[data-prov]').value.trim();
+    if (!proveedor) { alert('Escribí el proveedor.'); return; }
+    if (!confirm(`¿Pasar este gasto a la cuenta corriente de ${proveedor}? Sale de la planilla de costos hasta que se pague.`)) return;
+    const b = div.querySelector('[data-cc]');
+    b.disabled = true;
+    try {
+      const r = await api('aCuentaCorriente', { id: div.dataset.credito, proveedor });
+      credito = credito.filter(x => x.id !== div.dataset.credito);
+      pendientes = pendientes.filter(x => x.id !== div.dataset.credito);
+      pintarValidar();
+      alert(r.mensaje);
+    } catch (e) {
+      alert(e instanceof ErrorRed ? 'Sin señal: probá de nuevo cuando haya.' : e.message);
+      b.disabled = false;
+    }
+  });
+
+  // Editar: abre la misma tarjeta que se usa al cargar, con los datos guardados; al guardar se corrige y queda validado.
+  el.querySelectorAll('.pend').forEach(div => {
+    const b = div.querySelector('[data-editar]');
+    if (!b) return;
+    b.onclick = () => {
+      const p = pendientes.find(x => x.id === div.dataset.id);
+      const item = { id: 'ed-' + p.id, tipo: 'tarjeta', estado: 'editando', registro: Object.assign({}, p.datos), original: null };
+      item.alCancelar = () => pintarValidar();
+      item.alGuardar = async it => {
+        document.querySelectorAll(`[data-item="${it.id}"] button`).forEach(x => { x.disabled = true; });
+        try {
+          await api('editar', { id: p.id, registro: it.registro });
+          pendientes = pendientes.filter(x => x.id !== p.id);
+          pintarValidar();
+        } catch (e) {
+          it.error = e instanceof ErrorRed ? 'Sin señal: probá de nuevo cuando haya.' : e.message;
+          pintar(it);
+        }
+      };
+      div.querySelector('.acciones').hidden = true;
+      const t = document.createElement('div');
+      t.className = 'tarjeta';
+      t.dataset.item = item.id;
+      t.innerHTML = htmlTarjeta(item);
+      div.appendChild(t);
+      conectarTarjeta(t, item);
+    };
+  });
   if ($('validar-todos')) $('validar-todos').onclick = async () => {
     if (!confirm(`¿Validar los ${pendientes.length} registros?`)) return;
     $('validar-todos').disabled = true;
