@@ -210,7 +210,7 @@ const CAMPOS = {
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }
   ],
   jorge: [
-    { k: 'fecha', et: 'Semana del viernes', t: 'date', ancho: true },
+    { k: 'fecha', et: 'Semana (cierra el sábado)', t: 'date', ancho: true },
     { k: 'dias_angaco', et: 'Días Angaco', t: 'number' },
     { k: 'dias_albardon', et: 'Días Albardón', t: 'number' },
     { k: 'notas', et: 'Notas', t: 'text', ancho: true }

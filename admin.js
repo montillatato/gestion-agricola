@@ -69,7 +69,7 @@ function pintarLiquidacion() {
       ${gastos.length ? `<details><summary class="vacio">Ver ${gastos.length} gastos desde el último aporte</summary><table><tbody>${gastos.map(g =>
         `<tr><td>${fechaCorta(g.fecha)}</td><td>${esc(g.detalle)}</td><td class="num">${peso(g.monto)}</td></tr>`).join('')}</tbody></table></details>` : ''}
     </div>
-    <div class="card"><h2>Sueldos a pagar el viernes (Albardón)</h2>
+    <div class="card"><h2>Sueldos a pagar de la semana (Albardón)</h2>
       ${filasPersonas}
       <div class="fila-liq"><span>Gente sin nombre <small>(${peso(d.tarifaGente)}/jornal)</small></span>
         <input type="text" inputmode="decimal" autocomplete="off" id="liq-gente" value="${enCampo(L.genteDias || '')}" placeholder="jornales">

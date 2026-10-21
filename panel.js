@@ -302,7 +302,7 @@ function htmlPersonal(d) {
      <td class="num">${num(f.pctAngaco)}%</td><td class="num">${num(100 - f.pctAngaco)}%</td></tr>`).join('')}</tbody></table></div>`;
   return `<div class="card"><h2>Jorge Aguilera · días por semestre</h2><p class="vacio" style="margin-top:0">Para el aguinaldo proporcional.</p>${tabla(j.semestres, nombreSem)}</div>
     <div class="card"><h2>Días por mes</h2><p class="vacio" style="margin-top:0">Para repartir cargas sociales.</p>${tabla(j.meses, nombreMes)}</div>
-    <div class="card"><h2>Últimas semanas</h2><div class="tabla-scroll"><table><thead><tr><th>Viernes</th><th class="num">Angaco</th><th class="num">Albardón</th></tr></thead><tbody>${
+    <div class="card"><h2>Últimas semanas</h2><div class="tabla-scroll"><table><thead><tr><th>Semana (sáb.)</th><th class="num">Angaco</th><th class="num">Albardón</th></tr></thead><tbody>${
       j.semanas.map(s => `<tr><td>${fechaCorta(s.semana)}</td><td class="num">${num(s.angaco)}</td><td class="num">${num(s.albardon)}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 
