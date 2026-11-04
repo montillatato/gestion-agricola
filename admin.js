@@ -27,7 +27,8 @@ function calcularLiquidacion() {
     const v = Number(L.valores[p.persona]) || 0;
     if (p.porDia) {
       const dias = v;
-      if (dias) lineas.push({ concepto: `${p.persona} (${num(dias)} días)`, monto: dias * p.tarifa });
+      // Fijos: semanal ÷ 5,5 por día, calculado con el semanal para que 5,5 días den justo la semana.
+      if (dias) lineas.push({ concepto: `${p.persona} (${num(dias)} días)`, monto: Math.round((p.semanal ? dias * p.semanal / 5.5 : dias * p.tarifa) * 100) / 100 });
     } else if (v) {
       lineas.push({ concepto: p.persona, monto: v });
     }
@@ -58,7 +59,7 @@ function pintarLiquidacion() {
   const filasPersonas = d.personas.map(p => p.porDia
     ? `<div class="fila-liq"><span>${esc(p.persona)} <small>(${peso(p.tarifa)}/día)</small></span>
         <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="días">
-        <small>Días en Albardón · medio día = ,5 (ej.: 5,5)${p.nota && p.diasSugeridos !== undefined ? '<br>' + esc(p.nota) : ''}</small></div>`
+        <small>Días en Albardón · medio día = ,5${p.nota ? '<br>' + esc(p.nota) : ''}</small></div>`
     : `<div class="fila-liq"><span>${esc(p.persona)}</span>
         <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="$">
         ${p.nota ? `<small>${esc(p.nota)}</small>` : ''}</div>`).join('');
@@ -259,13 +260,13 @@ function abrirAyuda() {
   $('ayuda').innerHTML = `<div class="card">
     <h3>Cómo cargar algo</h3>
     <ol>
-      <li>Abrí <b>Cargar</b> (💬 abajo a la izquierda).</li>
+      <li>Abrí <b>Cargar</b> (abajo a la izquierda).</li>
       <li>Escribí, o tocá el <b>micrófono del teclado</b> y hablá, como si mandaras un WhatsApp.</li>
-      <li>Tocá <b>➤</b>. Aparece una tarjeta con lo que entendí.</li>
+      <li>Tocá la <b>flecha verde</b>. Aparece una tarjeta con lo que entendí.</li>
       <li>Revisala. Si algo está mal, tocá el dato y corregilo.</li>
       <li>Tocá <b>Guardar</b>. Listo ✅</li>
     </ol>
-    <p>Para mandar la foto de un ticket, factura o remito, tocá 📷.</p>
+    <p>Para mandar la foto de un ticket, factura o remito, tocá la <b>cámara</b>.</p>
 
     <h3>Ejemplos</h3>
     ${ej('Le pagué 150 mil a Pedro en efectivo')}
@@ -276,6 +277,8 @@ function abrirAyuda() {
     ${ej('Llegaron 40 bolsas de Aqua Phos de Agrícola del Oeste')}
     ${ej('Hoy en el cuadro 2 inyectamos 160 litros de Guenta')}
     ${ej('Jorge esta semana 3 días en Angaco y 2 en Albardón')}
+    ${ej('A Leo le pagué 6 días')}
+    ${ej('Pagué las cargas sociales de Jorge de octubre, 400 mil')}
     ${ej('Sergio mandó 1.200.000')}
     ${ej('Al 130 le cambiamos el aceite y el filtro, tiene 4.520 horas. El aceite salió 85 mil')}
     ${ej('¿Cuándo le hicimos el último cambio de aceite al 130?')}
@@ -292,7 +295,7 @@ function abrirAyuda() {
     <p>Mandá igual. El mensaje queda con un 🕓 y se envía solo cuando vuelve la señal. <b>No lo mandes dos veces.</b> Arriba aparece un aviso amarillo mientras haya cosas sin enviar.</p>
 
     <h3>Ver números</h3>
-    <p>En <b>Panel</b> (📊) están los gastos, cuánto fertilizante se aplicó y cuánto falta, el stock y lo que falta que entreguen los proveedores.</p>
+    <p>En <b>Panel</b> están los gastos, cuánto fertilizante se aplicó y cuánto falta, el stock y lo que falta que entreguen los proveedores.</p>
 
     <h3>¿Otra duda?</h3>
     <p>Preguntale al chat, por ejemplo: <i>"¿cómo cargo un cheque?"</i> o <i>"¿cuánta Guenta nos queda?"</i>.</p>

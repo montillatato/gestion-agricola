@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2e7d32">
+<meta name="theme-color" content="#f3f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1110" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finca">
 <title>Gestión agrícola</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -22,9 +23,9 @@
     <div id="chat" aria-live="polite"></div>
     <div id="adjunto"><img id="miniatura" alt="Foto adjunta"><button class="secundario chico" id="quitar">Quitar foto</button></div>
     <div id="barra-chat">
-      <label class="icono secundario boton" aria-label="Adjuntar foto">📷<input type="file" id="foto" accept="image/*" hidden></label>
+      <label class="icono secundario boton" aria-label="Adjuntar foto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg><input type="file" id="foto" accept="image/*" hidden></label>
       <textarea id="texto" rows="1" placeholder="Escribí o dictá…"></textarea>
-      <button class="icono primario" id="enviar" aria-label="Enviar">➤</button>
+      <button class="icono primario" id="enviar" aria-label="Enviar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg></button>
     </div>
   </main>
   <main id="vista-panel" class="vista"><div class="pagina" id="panel"></div></main>
@@ -33,11 +34,11 @@
   <main id="vista-ayuda" class="vista"><div class="pagina ayuda" id="ayuda"></div></main>
 
   <nav id="nav">
-    <button data-vista="cargar" aria-current="page"><span>💬</span>Cargar</button>
-    <button data-vista="panel"><span>📊</span>Panel</button>
-    <button data-vista="liquidacion"><span>🧾</span>Liquidación</button>
-    <button data-vista="validar" data-admin hidden><span>✅</span>Validar</button>
-    <button data-vista="ayuda"><span>❔</span>Ayuda</button>
+    <button data-vista="cargar" aria-current="page"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg></span>Cargar</button>
+    <button data-vista="panel"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Panel</button>
+    <button data-vista="liquidacion"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></span>Liquidación</button>
+    <button data-vista="validar" data-admin hidden><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg></span>Validar</button>
+    <button data-vista="ayuda"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17.2h.01"/></svg></span>Ayuda</button>
   </nav>
   <div id="tip"></div>
   <div id="bloqueo"><div><h2>Falta tu acceso</h2><p>Abrí esta app desde el link que te pasó Tato.</p></div></div>

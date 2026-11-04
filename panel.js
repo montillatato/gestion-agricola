@@ -270,7 +270,7 @@ function htmlAgenda(d) {
         <td>${fechaCorta(x.fecha)}</td>
         <td><b>${esc(x.tipo)}</b><br><small>${esc(x.detalle)}${x.recurrencia && x.recurrencia !== 'Única' ? ' · ' + esc(x.recurrencia.toLowerCase()) + (x.hasta ? ' hasta ' + fechaCorta(x.hasta) : '') : ''}</small></td>
         <td class="num">${x.monto ? peso(x.monto) : ''}</td>
-        <td><button class="secundario chico" data-hecho="${esc(x.id)}" data-origen="${esc(x.origen)}" aria-label="Marcar como hecho">✓</button></td>
+        <td>${x.origen === 'jorge_falta' ? '' : `<button class="secundario chico" data-hecho="${esc(x.id)}" data-origen="${esc(x.origen)}" aria-label="Marcar como hecho">✓</button>`}</td>
       </tr>`).join('')}</tbody></table></div></div>`;
   }).join('') + htmlHechos;
 }
