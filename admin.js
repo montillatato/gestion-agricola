@@ -3,7 +3,9 @@
 
 // ───────────────────────── Liquidación Albardón ─────────────────────────
 
-const L = { datos: null, valores: {}, genteDias: 0, otros: 0, otrosDetalle: '', detalle: true, error: '' };
+const L = { finca: 'Albardón', datos: null, valores: {}, gente: { 'Albardón': 0, 'Angaco': 0 }, otros: 0, otrosDetalle: '', detalle: true, error: '' };
+const personasLiq = finca => finca === 'Angaco' ? L.datos.angaco.personas : L.datos.personas;
+const claveLiq = (finca, persona) => finca + '|' + persona;
 
 async function abrirLiquidacion() {
   const el = $('liquidacion');
@@ -11,20 +13,21 @@ async function abrirLiquidacion() {
   try {
     L.datos = await api('liquidacion');
     L.error = '';
-    L.datos.personas.forEach(p => {
-      if (!(p.persona in L.valores)) L.valores[p.persona] = p.porDia ? (p.diasSugeridos || 0) : p.sugerido;
-    });
+    ['Albardón', 'Angaco'].forEach(f => personasLiq(f).forEach(p => {
+      const k = claveLiq(f, p.persona);
+      if (!(k in L.valores)) L.valores[k] = p.porDia ? (p.diasSugeridos || 0) : p.sugerido;
+    }));
   } catch (e) {
     L.error = e instanceof ErrorRed ? 'Sin señal. La liquidación necesita conexión.' : e.message;
   }
   pintarLiquidacion();
 }
 
-function calcularLiquidacion() {
+function lineasPersonal(finca) {
   const d = L.datos;
   const lineas = [];
-  d.personas.forEach(p => {
-    const v = Number(L.valores[p.persona]) || 0;
+  personasLiq(finca).forEach(p => {
+    const v = Number(L.valores[claveLiq(finca, p.persona)]) || 0;
     if (p.porDia) {
       const dias = v;
       // Fijos: semanal ÷ 5,5 por día, calculado con el semanal para que 5,5 días den justo la semana.
@@ -33,8 +36,14 @@ function calcularLiquidacion() {
       lineas.push({ concepto: p.persona, monto: v });
     }
   });
-  const gente = Number(L.genteDias) || 0;
+  const gente = Number(L.gente[finca]) || 0;
   if (gente) lineas.push({ concepto: `Gente (${num(gente)} jornales)`, monto: gente * d.tarifaGente });
+  return lineas;
+}
+
+function calcularLiquidacion() {
+  const d = L.datos;
+  const lineas = lineasPersonal('Albardón');
   if (Number(L.otros)) lineas.push({ concepto: L.otrosDetalle || 'Otros', monto: Number(L.otros) });
   const sueldos = lineas.reduce((a, l) => a + l.monto, 0);
   const saldo = d.sergio.saldo;
@@ -54,17 +63,37 @@ function mensajeSergio(c) {
 function pintarLiquidacion() {
   const el = $('liquidacion');
   if (!L.datos) { el.innerHTML = `<div class="aviso">${esc(L.error || 'Sin datos.')}</div>`; return; }
-  const d = L.datos, s = d.sergio, c = calcularLiquidacion();
+  const d = L.datos, s = d.sergio, c = calcularLiquidacion(), finca = L.finca;
   const gastos = s.gastosDesdeUltimoAporte;
-  const filasPersonas = d.personas.map(p => p.porDia
+  const selector = `<div class="seg" role="group">${['Albardón', 'Angaco'].map(f => `<button data-liq-finca="${f}" aria-pressed="${f === finca}">${f}</button>`).join('')}</div>`;
+  const valor = p => L.valores[claveLiq(finca, p.persona)];
+  const filasPersonas = personasLiq(finca).map(p => p.porDia
     ? `<div class="fila-liq"><span>${esc(p.persona)} <small>(${peso(p.tarifa)}/día)</small></span>
-        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="días">
-        <small>Días en Albardón · medio día = ,5${p.nota ? '<br>' + esc(p.nota) : ''}</small></div>`
+        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(valor(p) || '')}" placeholder="días">
+        <small>Días en ${finca} · medio día = ,5${p.nota ? '<br>' + esc(p.nota) : ''}</small></div>`
     : `<div class="fila-liq"><span>${esc(p.persona)}</span>
-        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(L.valores[p.persona] || '')}" placeholder="$">
+        <input type="text" inputmode="decimal" autocomplete="off" data-persona="${esc(p.persona)}" value="${enCampo(valor(p) || '')}" placeholder="$">
         ${p.nota ? `<small>${esc(p.nota)}</small>` : ''}</div>`).join('');
 
-  el.innerHTML = `${L.error ? `<div class="aviso">${esc(L.error)}</div>` : ''}
+  const filaGente = `<div class="fila-liq"><span>Gente sin nombre <small>(${peso(d.tarifaGente)}/jornal)</small></span>
+        <input type="text" inputmode="decimal" autocomplete="off" id="liq-gente" value="${enCampo(L.gente[finca] || '')}" placeholder="jornales">
+        <small>Total de jornales de la semana · medio día = ,5 (ej.: 4 personas lun–vie + sábado = 22)</small></div>`;
+  const conectarComunes = () => {
+    el.querySelectorAll('[data-liq-finca]').forEach(b => b.onclick = () => { L.finca = b.dataset.liqFinca; pintarLiquidacion(); });
+    el.querySelectorAll('[data-persona]').forEach(i => i.onchange = () => { L.valores[claveLiq(finca, i.dataset.persona)] = aNumero(i.value) || 0; pintarLiquidacion(); });
+    $('liq-gente').onchange = e => { L.gente[finca] = aNumero(e.target.value) || 0; pintarLiquidacion(); };
+  };
+
+  if (finca === 'Angaco') {
+    const total = lineasPersonal('Angaco').reduce((a, l) => a + l.monto, 0);
+    el.innerHTML = `${L.error ? `<div class="aviso">${esc(L.error)}</div>` : ''}${selector}
+    <div class="card"><h2>Sueldos a pagar de la semana (Angaco)</h2>${filasPersonas}${filaGente}</div>
+    <div class="card"><div class="total-liq grande" style="margin-top:0;padding-top:0;border-top:0"><span>Efectivo para el viernes</span><span>${peso(total)}</span></div></div>`;
+    conectarComunes();
+    return;
+  }
+
+  el.innerHTML = `${L.error ? `<div class="aviso">${esc(L.error)}</div>` : ''}${selector}
     <div class="card"><h2>Cuenta con Sergio</h2>
       <div class="total-liq"><span>${s.saldo >= 0 ? 'Fondos sin usar (sobrante)' : 'Gastos que pagamos nosotros'}</span><b>${peso(Math.abs(s.saldo))}</b></div>
       ${gastos.length ? `<details><summary class="vacio">Ver ${gastos.length} gastos desde el último aporte</summary><table><tbody>${gastos.map(g =>
@@ -72,9 +101,7 @@ function pintarLiquidacion() {
     </div>
     <div class="card"><h2>Sueldos a pagar de la semana (Albardón)</h2>
       ${filasPersonas}
-      <div class="fila-liq"><span>Gente sin nombre <small>(${peso(d.tarifaGente)}/jornal)</small></span>
-        <input type="text" inputmode="decimal" autocomplete="off" id="liq-gente" value="${enCampo(L.genteDias || '')}" placeholder="jornales">
-        <small>Total de jornales de la semana · medio día = ,5 (ej.: 4 personas lun–vie + sábado = 22)</small></div>
+      ${filaGente}
       <div class="fila-liq"><input class="campo" id="liq-otros-det" value="${esc(L.otrosDetalle)}" placeholder="Otro concepto (opcional)" style="text-align:left">
         <input type="text" inputmode="decimal" autocomplete="off" id="liq-otros" value="${enCampo(L.otros || '')}" placeholder="$"></div>
     </div>
@@ -92,8 +119,7 @@ function pintarLiquidacion() {
     </div>`;
 
   const re = () => pintarLiquidacion();
-  el.querySelectorAll('[data-persona]').forEach(i => i.onchange = () => { L.valores[i.dataset.persona] = aNumero(i.value) || 0; re(); });
-  $('liq-gente').onchange = e => { L.genteDias = aNumero(e.target.value) || 0; re(); };
+  conectarComunes();
   $('liq-otros').onchange = e => { L.otros = aNumero(e.target.value) || 0; re(); };
   $('liq-otros-det').onchange = e => { L.otrosDetalle = e.target.value; re(); };
   $('liq-detalle').onchange = e => { L.detalle = e.target.checked; re(); };

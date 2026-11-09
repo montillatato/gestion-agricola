@@ -68,7 +68,7 @@ async function api(accion, datos) {
 
 // ───────────────────────── Navegación ─────────────────────────
 
-const TITULOS_VISTA = { cargar: 'Cargar', panel: 'Panel', liquidacion: 'Liquidación Albardón', validar: 'Validar', ayuda: 'Ayuda' };
+const TITULOS_VISTA = { cargar: 'Cargar', panel: 'Panel', liquidacion: 'Liquidación', validar: 'Validar', ayuda: 'Ayuda' };
 
 function ir(vista) {
   document.querySelectorAll('#nav button').forEach(b => {
